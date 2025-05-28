@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to EC2
 
 on:
   push:
@@ -11,8 +11,29 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Deploy to GitHub Pages
-      uses: JamesIves/github-pages-deploy-action@v4
-      with:
-        folder: ./
-        branch: gh-pages 
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "Host *" > ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
+        ls -la ~/.ssh/
+        cat ~/.ssh/config
+
+    - name: Test SSH Connection
+      run: |
+        ssh -v -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
+
+    - name: Deploy files
+      run: |
+        # Create a zip file of the website
+        zip -r website.zip ./*
+        
+        # Copy the zip file to the server
+        scp -v -i ~/.ssh/id_rsa website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/
+        
+        # Extract and deploy
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
