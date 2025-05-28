@@ -16,7 +16,7 @@ jobs:
       with:
         host: ${{ secrets.EC2_HOST }}
         username: ubuntu
-        key_path: ${{ secrets.EC2_PEM }}
+        key: ${{ secrets.EC2_PEM }}
         script: |
           cd /var/www/html
           sudo rm -rf *
