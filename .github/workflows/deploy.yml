@@ -14,98 +14,30 @@ jobs:
     - name: Setup SSH
       run: |
         mkdir -p ~/.ssh
-        # Write the key directly since it already includes headers
         echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         echo "Host *" > ~/.ssh/config
         echo "  StrictHostKeyChecking no" >> ~/.ssh/config
         echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
-        # Debug information
-        echo "=== SSH Key Format ==="
-        head -n 1 ~/.ssh/id_rsa
-        echo "=== SSH Config ==="
-        cat ~/.ssh/config
-        echo "=== Key Permissions ==="
-        ls -la ~/.ssh/
-        echo "=== Key Content (first few lines) ==="
-        head -n 3 ~/.ssh/id_rsa
-        echo "=== EC2 Host ==="
-        echo "${{ secrets.EC2_HOST }}"
 
-    - name: Test SSH Connection
+    - name: Create Nginx Config
       run: |
-        echo "=== Testing SSH Connection ==="
-        echo "Host: ${{ secrets.EC2_HOST }}"
-        echo "Key file exists: $(test -f ~/.ssh/id_rsa && echo 'Yes' || echo 'No')"
-        echo "Key permissions: $(ls -l ~/.ssh/id_rsa)"
-        echo "=== Attempting SSH connection ==="
-        ssh -vvv -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
-          echo "=== SSH Connection Failed ==="
-          echo "Please check:"
-          echo "1. EC2_HOST is correct"
-          echo "2. EC2_PEM key is valid"
-          echo "3. Security group allows port 22"
-          echo "4. Instance is running"
-          exit 1
-        }
+        mkdir -p nginx
+        printf "server {\n    listen 80;\n    server_name _;\n    root /var/www/html;\n    index index.html;\n    \n    location / {\n        try_files \$uri \$uri/ =404;\n    }\n}\n" > nginx/default.conf
 
     - name: Setup Web Server
       run: |
-        echo "=== Setting up web server ==="
-        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c '
-          # Update system and install nginx
-          sudo yum update -y
-          sudo amazon-linux-extras install nginx1 -y
-          
-          # Create web directory if it doesn't exist
-          sudo mkdir -p /var/www/html
-          
-          # Configure nginx
-          sudo tee /etc/nginx/conf.d/default.conf << EOF
-          server {
-              listen 80;
-              server_name _;
-              root /var/www/html;
-              index index.html;
-              
-              location / {
-                  try_files \$uri \$uri/ =404;
-              }
-          }
-          EOF
-          
-          # Set permissions
-          sudo chown -R nginx:nginx /var/www/html
-          sudo chmod -R 755 /var/www/html
-          
-          # Enable and start nginx
-          sudo systemctl enable nginx
-          sudo systemctl start nginx
-          
-          # Check nginx status
-          sudo systemctl status nginx
-        '"
+        scp -i ~/.ssh/id_rsa -o IdentitiesOnly=yes nginx/default.conf ec2-user@${{ secrets.EC2_HOST }}:/tmp/default.conf
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'sudo yum update -y && sudo amazon-linux-extras install nginx1 -y && sudo mkdir -p /var/www/html && sudo mv /tmp/default.conf /etc/nginx/conf.d/default.conf && sudo chown -R nginx:nginx /var/www/html && sudo chmod -R 755 /var/www/html && sudo systemctl enable nginx && sudo systemctl start nginx && sudo systemctl status nginx'"
 
     - name: Deploy files
       run: |
-        # Create a zip file of the website
-        echo "=== Creating zip file ==="
         zip -r website.zip ./* || exit 1
-        
-        # Copy the zip file to the server
-        echo "=== Copying files to server ==="
         scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ec2-user@${{ secrets.EC2_HOST }}:/tmp/ || exit 1
-        
-        # Deploy files
-        echo "=== Deploying files ==="
         ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R nginx:nginx /var/www/html && systemctl restart nginx'" || exit 1
 
     - name: Verify deployment
       run: |
-        echo "=== Verifying deployment ==="
-        # Wait for nginx to restart
         sleep 5
-        # Check if the website is accessible
-        curl -f http://${{ secrets.EC2_HOST }} || exit 1
-        echo "=== Deployment verified successfully ===" 
+        curl -f http://${{ secrets.EC2_HOST }} || exit 1 
