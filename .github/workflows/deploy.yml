@@ -11,22 +11,14 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Install SSH key
-      uses: shimataro/ssh-key-action@v2
-      with:
-        key: ${{ secrets.EC2_PEM }}
-        known_hosts: unnecessary
-        if_key_exists: replace
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-    - name: Deploy to EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ubuntu
-        key_path: ~/.ssh/id_rsa
-        script: |
-          cd /var/www/html
-          sudo rm -rf *
-          sudo cp -r /home/ubuntu/IA-Protoflio-by-AI/* .
-          sudo chown -R www-data:www-data /var/www/html
-          sudo systemctl restart nginx 
+    - name: Deploy files
+      run: |
+        scp -r ./* ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/
+        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
