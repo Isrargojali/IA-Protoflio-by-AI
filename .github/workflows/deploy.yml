@@ -23,4 +23,8 @@ jobs:
 
     - name: Deploy files
       run: |
-        ssh -p 22 -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo su - root -c 'cd /var/www/html && rm -rf * && cp -r /home/ubuntu/IA-Protoflio-by-AI/* . && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
+        # First, copy files to the server
+        scp -P 22 -i ~/.ssh/id_rsa -r ./* ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/website/
+        
+        # Then run the deployment commands
+        ssh -p 22 -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && cp -r /home/ubuntu/website/* . && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
