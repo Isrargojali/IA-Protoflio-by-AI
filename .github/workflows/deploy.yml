@@ -54,26 +54,12 @@ jobs:
       run: |
         echo "=== Setting up web server ==="
         ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c '
-          # Install nginx if not installed
-          if ! command -v nginx &> /dev/null; then
-            sudo yum update -y
-            sudo yum install -y nginx
-            sudo systemctl enable nginx
-            sudo systemctl start nginx
-          fi
+          # Update system and install nginx
+          sudo yum update -y
+          sudo amazon-linux-extras install nginx1 -y
           
           # Create web directory if it doesn't exist
           sudo mkdir -p /var/www/html
-          
-          # Get the nginx user
-          NGINX_USER=\$(ps aux | grep nginx | grep -v grep | head -n1 | awk \"{print \\\$1}\")
-          if [ -z \"\$NGINX_USER\" ]; then
-            NGINX_USER=nginx
-          fi
-          
-          # Set permissions
-          sudo chown -R \$NGINX_USER:\$NGINX_USER /var/www/html
-          sudo chmod -R 755 /var/www/html
           
           # Configure nginx
           sudo tee /etc/nginx/conf.d/default.conf << EOF
@@ -89,8 +75,16 @@ jobs:
           }
           EOF
           
-          # Restart nginx
-          sudo systemctl restart nginx
+          # Set permissions
+          sudo chown -R nginx:nginx /var/www/html
+          sudo chmod -R 755 /var/www/html
+          
+          # Enable and start nginx
+          sudo systemctl enable nginx
+          sudo systemctl start nginx
+          
+          # Check nginx status
+          sudo systemctl status nginx
         '"
 
     - name: Deploy files
@@ -105,7 +99,7 @@ jobs:
         
         # Deploy files
         echo "=== Deploying files ==="
-        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && NGINX_USER=\$(ps aux | grep nginx | grep -v grep | head -n1 | awk \"{print \\\$1}\") && if [ -z \"\$NGINX_USER\" ]; then NGINX_USER=nginx; fi && chown -R \$NGINX_USER:\$NGINX_USER /var/www/html && systemctl restart nginx'" || exit 1
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R nginx:nginx /var/www/html && systemctl restart nginx'" || exit 1
 
     - name: Verify deployment
       run: |
