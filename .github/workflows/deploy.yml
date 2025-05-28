@@ -14,18 +14,25 @@ jobs:
     - name: Setup SSH
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
+        # Format the key properly with newlines
+        echo -e "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         echo "Host *" > ~/.ssh/config
         echo "  StrictHostKeyChecking no" >> ~/.ssh/config
         echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
         chmod 600 ~/.ssh/config
-        ls -la ~/.ssh/
+        # Debug information
+        echo "=== SSH Key Format ==="
+        head -n 1 ~/.ssh/id_rsa
+        echo "=== SSH Config ==="
         cat ~/.ssh/config
+        echo "=== Key Permissions ==="
+        ls -la ~/.ssh/
 
     - name: Test SSH Connection
       run: |
-        ssh -v -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
+        echo "=== Testing SSH Connection ==="
+        ssh -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
 
     - name: Deploy files
       run: |
@@ -33,7 +40,7 @@ jobs:
         zip -r website.zip ./*
         
         # Copy the zip file to the server
-        scp -v -i ~/.ssh/id_rsa website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/
+        scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/
         
         # Extract and deploy
-        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
