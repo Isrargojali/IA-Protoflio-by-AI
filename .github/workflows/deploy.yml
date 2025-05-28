@@ -60,9 +60,9 @@ jobs:
         echo "=== Copying files to server ==="
         scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ec2-user@${{ secrets.EC2_HOST }}:/tmp/ || exit 1
         
-        # Extract and deploy
+        # Create directory and deploy
         echo "=== Deploying files ==="
-        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R apache:apache /var/www/html && systemctl restart httpd'" || exit 1
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'mkdir -p /var/www/html && cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R apache:apache /var/www/html && systemctl restart httpd'" || exit 1
 
     - name: Verify deployment
       run: |
