@@ -11,14 +11,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
-    - name: Deploy files
-      run: |
-        scp -r ./* ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/
-        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
+    - name: Deploy to EC2
+      uses: easingthemes/ssh-deploy@main
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.EC2_PEM }}
+        ARGS: "-rlgoDzvc -i"
+        SOURCE: "./"
+        REMOTE_HOST: ${{ secrets.EC2_HOST }}
+        REMOTE_USER: "ubuntu"
+        TARGET: "/var/www/html/"
+        SCRIPT_AFTER: |
+          sudo chown -R www-data:www-data /var/www/html
+          sudo systemctl restart nginx 
