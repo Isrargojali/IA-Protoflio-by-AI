@@ -1,4 +1,4 @@
-name: Deploy to EC2
+name: Deploy to GitHub Pages
 
 on:
   push:
@@ -11,20 +11,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Setup SSH
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        echo "Host *" > ~/.ssh/config
-        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
-        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
-        chmod 600 ~/.ssh/config
-
-    - name: Deploy files
-      run: |
-        # First, copy files to the server
-        scp -P 22 -i ~/.ssh/id_rsa -r ./* ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/website/
-        
-        # Then run the deployment commands
-        ssh -p 22 -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && cp -r /home/ubuntu/website/* . && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        folder: ./
+        branch: gh-pages 
