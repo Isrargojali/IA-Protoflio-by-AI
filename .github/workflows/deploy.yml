@@ -34,15 +34,27 @@ jobs:
     - name: Test SSH Connection
       run: |
         echo "=== Testing SSH Connection ==="
-        ssh -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'"
+        ssh -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || exit 1
 
     - name: Deploy files
       run: |
         # Create a zip file of the website
-        zip -r website.zip ./*
+        echo "=== Creating zip file ==="
+        zip -r website.zip ./* || exit 1
         
         # Copy the zip file to the server
-        scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/
+        echo "=== Copying files to server ==="
+        scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/ || exit 1
         
         # Extract and deploy
-        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
+        echo "=== Deploying files ==="
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" || exit 1
+
+    - name: Verify deployment
+      run: |
+        echo "=== Verifying deployment ==="
+        # Wait for nginx to restart
+        sleep 5
+        # Check if the website is accessible
+        curl -f http://${{ secrets.EC2_HOST }} || exit 1
+        echo "=== Deployment verified successfully ===" 
