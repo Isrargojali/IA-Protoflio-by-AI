@@ -59,12 +59,20 @@ body {
 }
 
 .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: 1.5rem;
-    font-weight: 700;
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-weight: bold;
+    color: #fff;
+}
+
+.nav-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #fff;
 }
 
 .nav-links {
