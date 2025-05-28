@@ -40,7 +40,7 @@ jobs:
         echo "Key file exists: $(test -f ~/.ssh/id_rsa && echo 'Yes' || echo 'No')"
         echo "Key permissions: $(ls -l ~/.ssh/id_rsa)"
         echo "=== Attempting SSH connection ==="
-        ssh -vvv -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
+        ssh -vvv -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
           echo "=== SSH Connection Failed ==="
           echo "Please check:"
           echo "1. EC2_HOST is correct"
@@ -58,16 +58,16 @@ jobs:
         
         # Copy the zip file to the server
         echo "=== Copying files to server ==="
-        scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ubuntu@${{ secrets.EC2_HOST }}:/tmp/ || exit 1
+        scp -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes website.zip ec2-user@${{ secrets.EC2_HOST }}:/tmp/ || exit 1
         
         # Extract and deploy
         echo "=== Deploying files ==="
-        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" || exit 1
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ec2-user@${{ secrets.EC2_HOST }} "sudo bash -c 'cd /var/www/html && rm -rf * && unzip -o /tmp/website.zip && chown -R apache:apache /var/www/html && systemctl restart httpd'" || exit 1
 
     - name: Verify deployment
       run: |
         echo "=== Verifying deployment ==="
-        # Wait for nginx to restart
+        # Wait for httpd to restart
         sleep 5
         # Check if the website is accessible
         curl -f http://${{ secrets.EC2_HOST }} || exit 1
