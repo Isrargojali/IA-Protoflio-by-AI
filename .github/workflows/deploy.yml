@@ -16,12 +16,18 @@ jobs:
         mkdir -p ~/.ssh
         echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        eval $(ssh-agent -s)
-        ssh-add ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        echo "Host *" > ~/.ssh/config
+        echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+        echo "  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
+        chmod 600 ~/.ssh/config
 
     - name: Deploy files
       run: |
-        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/*"
-        rsync -avz --delete ./ ubuntu@${{ secrets.EC2_HOST }}:/tmp/website/
-        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo cp -r /tmp/website/* /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
+        # Create a temporary directory on the server
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "mkdir -p /tmp/website"
+        
+        # Copy files to temporary directory
+        scp -i ~/.ssh/id_rsa -r ./* ubuntu@${{ secrets.EC2_HOST }}:/tmp/website/
+        
+        # Move files to web directory and set permissions
+        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/* && sudo cp -r /tmp/website/* /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
