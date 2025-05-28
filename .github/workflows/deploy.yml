@@ -22,5 +22,6 @@ jobs:
 
     - name: Deploy files
       run: |
-        rsync -avz --delete ./ ubuntu@${{ secrets.EC2_HOST }}:/var/www/html/
-        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
+        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/*"
+        rsync -avz --delete ./ ubuntu@${{ secrets.EC2_HOST }}:/tmp/website/
+        ssh ubuntu@${{ secrets.EC2_HOST }} "sudo cp -r /tmp/website/* /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
