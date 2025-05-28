@@ -23,11 +23,4 @@ jobs:
 
     - name: Deploy files
       run: |
-        # Create a temporary directory on the server
-        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "mkdir -p /tmp/website"
-        
-        # Copy files to temporary directory
-        scp -i ~/.ssh/id_rsa -r ./* ubuntu@${{ secrets.EC2_HOST }}:/tmp/website/
-        
-        # Move files to web directory and set permissions
-        ssh -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo rm -rf /var/www/html/* && sudo cp -r /tmp/website/* /var/www/html/ && sudo chown -R www-data:www-data /var/www/html && sudo systemctl restart nginx" 
+        ssh -p 22 -i ~/.ssh/id_rsa ubuntu@${{ secrets.EC2_HOST }} "sudo su - root -c 'cd /var/www/html && rm -rf * && cp -r /home/ubuntu/IA-Protoflio-by-AI/* . && chown -R www-data:www-data /var/www/html && systemctl restart nginx'" 
