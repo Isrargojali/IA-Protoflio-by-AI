@@ -14,8 +14,8 @@ jobs:
     - name: Setup SSH
       run: |
         mkdir -p ~/.ssh
-        # Format the key properly with newlines
-        echo -e "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
+        # Write the key directly since it already includes headers
+        echo "${{ secrets.EC2_PEM }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
         echo "Host *" > ~/.ssh/config
         echo "  StrictHostKeyChecking no" >> ~/.ssh/config
@@ -28,6 +28,8 @@ jobs:
         cat ~/.ssh/config
         echo "=== Key Permissions ==="
         ls -la ~/.ssh/
+        echo "=== Key Content (first few lines) ==="
+        head -n 3 ~/.ssh/id_rsa
 
     - name: Test SSH Connection
       run: |
