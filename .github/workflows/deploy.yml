@@ -30,11 +30,25 @@ jobs:
         ls -la ~/.ssh/
         echo "=== Key Content (first few lines) ==="
         head -n 3 ~/.ssh/id_rsa
+        echo "=== EC2 Host ==="
+        echo "${{ secrets.EC2_HOST }}"
 
     - name: Test SSH Connection
       run: |
         echo "=== Testing SSH Connection ==="
-        ssh -v -i ~/.ssh/id_rsa -o IdentitiesOnly=yes ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || exit 1
+        echo "Host: ${{ secrets.EC2_HOST }}"
+        echo "Key file exists: $(test -f ~/.ssh/id_rsa && echo 'Yes' || echo 'No')"
+        echo "Key permissions: $(ls -l ~/.ssh/id_rsa)"
+        echo "=== Attempting SSH connection ==="
+        ssh -vvv -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "echo 'SSH connection successful'" || {
+          echo "=== SSH Connection Failed ==="
+          echo "Please check:"
+          echo "1. EC2_HOST is correct"
+          echo "2. EC2_PEM key is valid"
+          echo "3. Security group allows port 22"
+          echo "4. Instance is running"
+          exit 1
+        }
 
     - name: Deploy files
       run: |
